@@ -11,7 +11,11 @@ const { fetchClipUrl } = require('./utils/fetchClip.js');
 const app = express();
 const port = process.env.PORT || 3000;
 
-app.use(cors());
+// Explicitly allow your frontend's origin
+app.use(cors({
+  origin: 'https://kuchris.github.io'
+}));
+
 app.use(express.json());
 
 const tmpDir = path.join(__dirname, 'tmp');
@@ -31,11 +35,11 @@ app.post('/get-clip-url', async (req, res) => {
         if (clipUrl) {
             res.json({ clipUrl });
         } else {
-            res.status(500).send('Could not find video URL on the page.');
+            res.status(404).send('Could not find video URL on the page. The scraper may need an update for this type of clip.');
         }
     } catch (error) {
         console.error('Error fetching clip URL:', error);
-        res.status(500).send('An error occurred while fetching the clip URL.');
+        res.status(500).send('An unexpected error occurred on the server while fetching the clip URL.');
     }
 });
 
@@ -50,7 +54,7 @@ app.post('/download', async (req, res) => {
         const clipUrl = await fetchClipUrl(url);
 
         if (!clipUrl) {
-            return res.status(500).send('Could not find video URL on the page.');
+            return res.status(404).send('Could not find video URL on the page. The scraper may need an update for this type of clip.');
         }
 
         const videoResponse = await axios({
