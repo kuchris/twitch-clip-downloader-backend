@@ -13,8 +13,14 @@ async function fetchClipUrl(twitchUrl) {
         if (jsonLdMatch && jsonLdMatch[1]) {
             try {
                 const jsonLd = JSON.parse(jsonLdMatch[1]);
-                // Find the VideoObject and return its contentUrl
-                const videoObject = jsonLd.find(item => item['@type'] === 'VideoObject');
+                let videoObject;
+
+                if (Array.isArray(jsonLd)) {
+                    videoObject = jsonLd.find(item => item['@type'] === 'VideoObject');
+                } else if (jsonLd['@type'] === 'VideoObject') {
+                    videoObject = jsonLd;
+                }
+
                 if (videoObject && videoObject.contentUrl) {
                     return videoObject.contentUrl;
                 }
