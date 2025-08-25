@@ -11,9 +11,7 @@ const { fetchClipUrl } = require('./utils/fetchClip.js');
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Handle all CORS requests
 app.use(cors());
-app.options('*', cors());
 
 app.use(express.json());
 
