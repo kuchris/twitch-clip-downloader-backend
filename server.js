@@ -19,6 +19,26 @@ if (!fs.existsSync(tmpDir)) {
     fs.mkdirSync(tmpDir);
 }
 
+app.post('/get-clip-url', async (req, res) => {
+    const { url } = req.body;
+
+    if (!url) {
+        return res.status(400).send('Twitch clip URL is required');
+    }
+
+    try {
+        const clipUrl = await fetchClipUrl(url);
+        if (clipUrl) {
+            res.json({ clipUrl });
+        } else {
+            res.status(500).send('Could not find video URL on the page.');
+        }
+    } catch (error) {
+        console.error('Error fetching clip URL:', error);
+        res.status(500).send('An error occurred while fetching the clip URL.');
+    }
+});
+
 app.post('/download', async (req, res) => {
     const { url, start, end } = req.body;
 
