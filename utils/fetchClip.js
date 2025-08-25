@@ -1,7 +1,29 @@
 const axios = require('axios');
 
 const GQL_URL = 'https://gql.twitch.tv/gql';
-const CLIP_QUERY_SHA = '08932b74658c3452157886338183813191b5523a4578469da339780689331043';
+
+// The full GraphQL query
+const CLIP_QUERY = `
+query VideoAccessToken_Clip($slug: String!) {
+  clip(slug: $slug) {
+    id
+    playbackAccessToken(
+      params: {
+        platform: "web",
+        playerBackend: "mediaplayer",
+        playerType: "clips"
+      }
+    ) {
+      signature
+      value
+    }
+    videoQualities {
+      frameRate
+      quality
+      sourceURL
+    }
+  }
+}`;
 
 async function fetchClipUrl(twitchUrl) {
     // 1. Extract the clip slug from the URL
@@ -12,25 +34,19 @@ async function fetchClipUrl(twitchUrl) {
     }
     const slug = slugMatch[1];
 
-    // 2. Construct the GraphQL query payload
+    // 2. Construct the new GraphQL payload with the full query
     const payload = {
         operationName: 'VideoAccessToken_Clip',
         variables: {
             slug: slug,
         },
-        extensions: {
-            persistedQuery: {
-                version: 1,
-                sha256Hash: CLIP_QUERY_SHA,
-            },
-        },
+        query: CLIP_QUERY, // Use the full query text
     };
 
     try {
         // 3. Make the POST request to Twitch's GQL API
         const { data } = await axios.post(GQL_URL, payload, {
             headers: {
-                // This Client-ID is a public, non-sensitive ID used by the Twitch web client.
                 'Client-ID': 'kimne78kx3ncx6brgo4mv6wki5h1ko',
             },
         });
@@ -38,8 +54,6 @@ async function fetchClipUrl(twitchUrl) {
         // 4. Navigate the response to find the highest quality video URL
         const clipData = data?.data?.clip;
         if (clipData && clipData.videoQualities && clipData.videoQualities.length > 0) {
-            // The videoQualities are often not sorted by quality, so we'll just take the first one.
-            // Or we could try to find the best one, e.g., 1080p. Let's just take the first for now.
             return clipData.videoQualities[0].sourceURL;
         } else {
             console.error('Could not find video URL in GQL response:', JSON.stringify(data, null, 2));
