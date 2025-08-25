@@ -4,7 +4,7 @@ const GQL_URL = 'https://gql.twitch.tv/gql';
 
 // The full GraphQL query
 const CLIP_QUERY = `
-query VideoAccessToken_Clip($slug: String!) {
+query VideoAccessToken_Clip($slug: ID!) {
   clip(slug: $slug) {
     id
     playbackAccessToken(
