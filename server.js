@@ -11,10 +11,9 @@ const { fetchClipUrl } = require('./utils/fetchClip.js');
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Explicitly allow your frontend's origin
-app.use(cors({
-  origin: 'https://kuchris.github.io'
-}));
+// Handle all CORS requests
+app.use(cors());
+app.options('*', cors());
 
 app.use(express.json());
 
