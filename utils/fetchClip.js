@@ -1,49 +1,52 @@
 const axios = require('axios');
 
+const GQL_URL = 'https://gql.twitch.tv/gql';
+const CLIP_QUERY_SHA = '9bfcc0177bffc730bd5a5a890ea5b37313a6e3792e134b557ae6c75d02200024';
+
 async function fetchClipUrl(twitchUrl) {
+    // 1. Extract the clip slug from the URL
+    const slugMatch = twitchUrl.match(/clip\/([^/?]+)/);
+    if (!slugMatch || !slugMatch[1]) {
+        console.error('Could not extract clip slug from URL:', twitchUrl);
+        return null;
+    }
+    const slug = slugMatch[1];
+
+    // 2. Construct the GraphQL query payload
+    const payload = {
+        operationName: 'VideoAccessToken_Clip',
+        variables: {
+            slug: slug,
+        },
+        extensions: {
+            persistedQuery: {
+                version: 1,
+                sha256Hash: CLIP_QUERY_SHA,
+            },
+        },
+    };
+
     try {
-        const { data: html } = await axios.get(twitchUrl, {
+        // 3. Make the POST request to Twitch's GQL API
+        const { data } = await axios.post(GQL_URL, payload, {
             headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-            }
+                // This Client-ID is a public, non-sensitive ID used by the Twitch web client.
+                'Client-ID': 'kimne78kx3ncx6brgo4mv6wki5h1ko',
+            },
         });
 
-        // 1. Try JSON-LD (most reliable)
-        const jsonLdMatch = html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/);
-        if (jsonLdMatch && jsonLdMatch[1]) {
-            try {
-                const jsonLd = JSON.parse(jsonLdMatch[1]);
-                let videoObject;
-                if (Array.isArray(jsonLd)) {
-                    videoObject = jsonLd.find(item => item['@type'] === 'VideoObject');
-                } else if (jsonLd['@type'] === 'VideoObject') {
-                    videoObject = jsonLd;
-                }
-                if (videoObject && videoObject.contentUrl) {
-                    return videoObject.contentUrl;
-                }
-            } catch (e) { /* Fall through */ }
+        // 4. Navigate the response to find the highest quality video URL
+        const clipData = data?.data?.clip;
+        if (clipData && clipData.videoQualities && clipData.videoQualities.length > 0) {
+            // The videoQualities are often not sorted by quality, so we'll just take the first one.
+            // Or we could try to find the best one, e.g., 1080p. Let's just take the first for now.
+            return clipData.videoQualities[0].sourceURL;
+        } else {
+            console.error('Could not find video URL in GQL response:', JSON.stringify(data, null, 2));
+            return null;
         }
-
-        // 2. Try generic .mp4 URL from the Twitch CDN (broad but effective)
-        const genericMp4Match = html.match(/"(https?:\/\/[^"]*clips-media-assets2\.twitch\.tv[^"]*\.mp4)"/);
-        if (genericMp4Match && genericMp4Match[1]) {
-            return genericMp4Match[1];
-        }
-
-        // 3. Fallback to <video> and <source> tags (less reliable)
-        const videoUrlMatch = html.match(/<video\s+src="([^"]+)"/);
-        if (videoUrlMatch && videoUrlMatch[1]) {
-            return videoUrlMatch[1];
-        }
-        const sourceUrlMatch = html.match(/<source\s+src="([^"]+)"/);
-        if (sourceUrlMatch && sourceUrlMatch[1]) {
-            return sourceUrlMatch[1];
-        }
-
-        return null;
     } catch (error) {
-        console.error('Error fetching Twitch clip page:', error.message);
+        console.error('Error fetching from Twitch GQL API:', error.message);
         return null;
     }
 }
