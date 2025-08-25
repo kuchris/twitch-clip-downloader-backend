@@ -1,7 +1,7 @@
 const axios = require('axios');
 
 const GQL_URL = 'https://gql.twitch.tv/gql';
-const CLIP_QUERY_SHA = '9bfcc0177bffc730bd5a5a890ea5b37313a6e3792e134b557ae6c75d02200024';
+const CLIP_QUERY_SHA = '08932b74658c3452157886338183813191b5523a4578469da339780689331043';
 
 async function fetchClipUrl(twitchUrl) {
     // 1. Extract the clip slug from the URL
